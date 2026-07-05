@@ -36,3 +36,7 @@ Thumbs.db
 desktop.ini
 .vscode/
 .idea/
+ bitki_projesi/bitki_projesi_model/
+ *.keras
+ *.pkl
+ bitki_projesi_colab/Pattern_Proje_deneme2.ipynb
