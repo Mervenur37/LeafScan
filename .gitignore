@@ -40,3 +40,8 @@ desktop.ini
  *.keras
  *.pkl
  bitki_projesi_colab/Pattern_Proje_deneme2.ipynb
+
+*.keras
+*.pkl
+*.h5
+bitki_projesi_colab/Pattern_Proje_deneme2.ipynb
