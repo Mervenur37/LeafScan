@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import ConfidenceBar from './ConfidenceBar'
 import TopPredictions from './TopPredictions'
 import { useLanguage } from '../context/LanguageContext'
@@ -9,6 +9,8 @@ import jsPDF from 'jspdf'
 function AnalysisResult({ result, loading, previewImage, previewBase64 }) {
   const { t, language } = useLanguage()
   const resultRef = useRef(null)
+  // Hangi sekmenin aktif olduğunu tutan state (başlangıçta "belirtiler")
+  const [aktifSekme, setAktifSekme] = useState('belirtiler')
 
   const handleSavePDF = async () => {
     if (!result) return
@@ -87,6 +89,25 @@ function AnalysisResult({ result, loading, previewImage, previewBase64 }) {
     )
   }
 
+  // --- Sekme tanımları ---
+  // Her sekme: id, etiket (emoji + başlık) ve gösterilecek içerik.
+  // Sağlıklı bitkilerde tedavi/önleme boş olacağı için sadece dolu olanları tutuyoruz.
+  const sekmeler = [
+    { id: 'belirtiler', etiket: '📋 Belirtiler', icerik: result.belirtiler },
+    { id: 'organik', etiket: '🌿 Organik', icerik: result.organik_tedavi },
+    { id: 'kimyasal', etiket: '🧪 Kimyasal', icerik: result.kimyasal_tedavi },
+    { id: 'onleme', etiket: '🛡️ Önleme', icerik: result.onleme },
+  ].filter(s => {
+    // İçeriği boş olan sekmeleri gösterme
+    if (!s.icerik) return false
+    // Bitki sağlıklıysa tedavi/önleme sekmelerini gizle, sadece belirtiler kalsın
+    if (result.is_healthy && s.id !== 'belirtiler') return false
+    return true
+  })
+
+  // Aktif sekme mevcut değilse ilk sekmeye düş
+  const aktifIcerik = sekmeler.find(s => s.id === aktifSekme) || sekmeler[0]
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -122,35 +143,50 @@ function AnalysisResult({ result, loading, previewImage, previewBase64 }) {
 
             {result.top_predictions?.length > 0 && <TopPredictions predictions={result.top_predictions} />}
 
-            {/* Belirtiler / Açıklama */}
-            {result.belirtiler && (
-              <motion.div className="info-card" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
-                <div className="info-card-title">📋 Belirtiler</div>
-                <p className="info-card-text">{result.belirtiler}</p>
-              </motion.div>
-            )}
-
-            {/* Organik Tedavi */}
-            {!result.is_healthy && result.organik_tedavi && (
-              <motion.div className="info-card recommendation" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}>
-                <div className="info-card-title">🌿 Organik Tedavi</div>
-                <p className="info-card-text">{result.organik_tedavi}</p>
-              </motion.div>
-            )}
-
-            {/* Kimyasal Tedavi */}
-            {!result.is_healthy && result.kimyasal_tedavi && (
-              <motion.div className="info-card recommendation" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}>
-                <div className="info-card-title">🧪 Kimyasal Tedavi</div>
-                <p className="info-card-text">{result.kimyasal_tedavi}</p>
-              </motion.div>
-            )}
-
-            {/* Önleme */}
-            {!result.is_healthy && result.onleme && (
-              <motion.div className="info-card recommendation" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }}>
-                <div className="info-card-title">🛡️ Önleme</div>
-                <p className="info-card-text">{result.onleme}</p>
+            {/* --- Sekmeli bilgi alanı --- */}
+            {sekmeler.length > 0 && (
+              <motion.div className="info-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} style={{ padding: 0, overflow: 'hidden' }}>
+                {/* Sekme başlıkları */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', padding: '8px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                  {sekmeler.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => setAktifSekme(s.id)}
+                      style={{
+                        flex: '1 1 auto',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        fontFamily: 'inherit',
+                        whiteSpace: 'nowrap',
+                        transition: 'all 0.2s',
+                        background: aktifIcerik.id === s.id ? 'rgba(22,163,74,0.12)' : 'transparent',
+                        color: aktifIcerik.id === s.id ? 'var(--green-700)' : 'var(--text-secondary)',
+                      }}
+                    >
+                      {s.etiket}
+                    </button>
+                  ))}
+                </div>
+                {/* Aktif sekmenin içeriği (değişince yumuşak geçiş) */}
+                <div style={{ padding: '16px' }}>
+                  <AnimatePresence mode="wait">
+                    <motion.p
+                      key={aktifIcerik.id}
+                      className="info-card-text"
+                      initial={{ opacity: 0, x: 8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -8 }}
+                      transition={{ duration: 0.2 }}
+                      style={{ margin: 0 }}
+                    >
+                      {aktifIcerik.icerik}
+                    </motion.p>
+                  </AnimatePresence>
+                </div>
               </motion.div>
             )}
           </motion.div>
