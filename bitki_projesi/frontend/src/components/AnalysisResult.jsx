@@ -122,17 +122,35 @@ function AnalysisResult({ result, loading, previewImage, previewBase64 }) {
 
             {result.top_predictions?.length > 0 && <TopPredictions predictions={result.top_predictions} />}
 
-            {result.description && (
+            {/* Belirtiler / Açıklama */}
+            {result.belirtiler && (
               <motion.div className="info-card" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
-                <div className="info-card-title">📋 {t('about_disease')}</div>
-                <p className="info-card-text">{result.description}</p>
+                <div className="info-card-title">📋 Belirtiler</div>
+                <p className="info-card-text">{result.belirtiler}</p>
               </motion.div>
             )}
 
-            {!result.is_healthy && result.recommendation && (
+            {/* Organik Tedavi */}
+            {!result.is_healthy && result.organik_tedavi && (
               <motion.div className="info-card recommendation" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}>
-                <div className="info-card-title">💊 {t('recommendation')}</div>
-                <p className="info-card-text">{result.recommendation}</p>
+                <div className="info-card-title">🌿 Organik Tedavi</div>
+                <p className="info-card-text">{result.organik_tedavi}</p>
+              </motion.div>
+            )}
+
+            {/* Kimyasal Tedavi */}
+            {!result.is_healthy && result.kimyasal_tedavi && (
+              <motion.div className="info-card recommendation" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}>
+                <div className="info-card-title">🧪 Kimyasal Tedavi</div>
+                <p className="info-card-text">{result.kimyasal_tedavi}</p>
+              </motion.div>
+            )}
+
+            {/* Önleme */}
+            {!result.is_healthy && result.onleme && (
+              <motion.div className="info-card recommendation" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }}>
+                <div className="info-card-title">🛡️ Önleme</div>
+                <p className="info-card-text">{result.onleme}</p>
               </motion.div>
             )}
           </motion.div>
