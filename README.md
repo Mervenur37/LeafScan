@@ -72,18 +72,26 @@ This project is a deep learning-based plant disease detection application. The m
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/cicikusdev/AI-Powered-Leaf-Analysis.git
-cd AI-Powered-Leaf-Analysis/bitki_projesi
+git clone https://github.com/Mervenur37/LeafScan.git
+cd LeafScan/bitki_projesi
 ```
 
-### 2. Backend Setup
+### 2. Download the Model Files
+
+The trained model files (`.keras`, `.pkl`) are not included in the repository due to their size. Download them from the Releases page:
+
+➡️ **[Download model_dosyalari.zip (v1.0)](https://github.com/Mervenur37/LeafScan/releases/download/v1.0/model_dosyalari.zip)**
+
+After downloading, extract the contents into the `bitki_projesi/bitki_projesi_model/` folder. The folder should contain the `.keras` model files and the `.pkl` helper files.
+
+### 3. Backend Setup
 
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
-### 3. Frontend Setup
+### 4. Frontend Setup
 
 ```bash
 cd ../frontend
@@ -182,7 +190,7 @@ bitki_projesi/
 │   ├── package.json
 │   └── vite.config.js
 └── bitki_projesi_model/
-    ├── best_model_v6.keras    # Active model (default)
+    ├── best_model_v6.keras    # Active model (default, downloaded from Releases)
     └── class_names.json       # 38 class labels
 ```
 
@@ -207,13 +215,26 @@ bitki_projesi/
 - **PlantDoc Dataset:** Real-world field images, 28 classes mapped
 - **Train/Test Split:** 80% train, 20% test (stratified)
 
+## ⚠️ Known Limitations & Future Work
+
+### Known Limitations
+- **Out-of-distribution inputs:** The model is trained only on leaf images. When given non-leaf inputs (e.g. cartoons, objects, random photos), it still forces a prediction into one of the 38 disease classes instead of rejecting the input. A low confidence score is often a hint, but the model does not yet say "this is not a leaf."
+- **Real-world variance:** Accuracy is highest on clean, centered leaf photos. Complex backgrounds, poor lighting, or multiple leaves in one frame can reduce reliability.
+
+### Future Work
+- 🔍 Add a "is this a leaf?" pre-check (confidence threshold or a separate leaf/not-leaf classifier) to reject out-of-distribution inputs
+- 💬 Add an LLM-based chat assistant so users can ask follow-up questions about the detected disease
+- 🩺 Expand treatment recommendations for each disease
+- 📈 Add disease-progress tracking over time for the same plant
+- 🎯 Explore segmentation to highlight the exact affected region on the leaf
+
 ## 📄 License
 
 This project was developed for educational purposes.
 
 ---
 
-*LeafScan v2.0 · MobileNetV2 + Transfer Learning · PlantVillage + PlantDoc Dataset · 2026*
+*LeafScan · MobileNetV2 + Transfer Learning · PlantVillage + PlantDoc Dataset · 2026*
 
 ---
 
@@ -289,18 +310,26 @@ MobileNetV2 mimarisi ve transfer learning kullanılarak eğitilmiş modeller, 14
 ### 1. Repoyu Klonla
 
 ```bash
-git clone https://github.com/cicikusdev/AI-Powered-Leaf-Analysis.git
-cd AI-Powered-Leaf-Analysis/bitki_projesi
+git clone https://github.com/Mervenur37/LeafScan.git
+cd LeafScan/bitki_projesi
 ```
 
-### 2. Backend Kurulumu
+### 2. Model Dosyalarını İndir
+
+Eğitilmiş model dosyaları (`.keras`, `.pkl`) boyutları nedeniyle repoya dahil edilmemiştir. Releases sayfasından indirin:
+
+➡️ **[model_dosyalari.zip indir (v1.0)](https://github.com/Mervenur37/LeafScan/releases/download/v1.0/model_dosyalari.zip)**
+
+İndirdikten sonra içindekileri `bitki_projesi/bitki_projesi_model/` klasörüne çıkarın. Klasörde `.keras` model dosyaları ve `.pkl` yardımcı dosyaları bulunmalıdır.
+
+### 3. Backend Kurulumu
 
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
-### 3. Frontend Kurulumu
+### 4. Frontend Kurulumu
 
 ```bash
 cd ../frontend
@@ -342,10 +371,23 @@ Tarayıcıda http://localhost:5173 adresine gidin.
 - **PlantDoc Dataset:** Gerçek tarla görselleri, 28 sınıf eşleştirildi
 - **Eğitim/Test Ayrımı:** %80 eğitim, %20 test (stratified)
 
+## ⚠️ Bilinen Kısıtlamalar & Gelecek Planları
+
+### Bilinen Kısıtlamalar
+- **Dağıtım dışı girdiler:** Model yalnızca yaprak görselleri üzerinde eğitilmiştir. Yaprak olmayan girdiler verildiğinde (örneğin karikatür, nesne, alakasız fotoğraf), girdiyi reddetmek yerine 38 hastalık sınıfından birine zorla tahmin üretir. Düşük güven skoru genelde bir ipucudur ancak model henüz "bu bir yaprak değil" diyememektedir.
+- **Gerçek dünya değişkenliği:** Doğruluk, temiz ve ortalanmış yaprak fotoğraflarında en yüksektir. Karmaşık arka plan, kötü ışık veya tek karede birden fazla yaprak güvenilirliği düşürebilir.
+
+### Gelecek Planları
+- 🔍 Dağıtım dışı girdileri reddetmek için "bu bir yaprak mı?" ön kontrolü ekleme (güven eşiği veya ayrı bir yaprak/yaprak-değil sınıflandırıcısı)
+- 💬 Kullanıcıların tespit edilen hastalık hakkında soru sorabilmesi için LLM tabanlı sohbet asistanı ekleme
+- 🩺 Her hastalık için tedavi önerilerini genişletme
+- 📈 Aynı bitki için zaman içinde hastalık ilerlemesi takibi ekleme
+- 🎯 Yaprak üzerindeki hastalıklı bölgeyi işaretlemek için segmentasyon araştırması
+
 ## 📄 Lisans
 
 Bu proje eğitim amaçlı geliştirilmiştir.
 
 ---
 
-*LeafScan v2.0 · MobileNetV2 + Transfer Learning · PlantVillage + PlantDoc Dataset · 2026*
+*LeafScan · MobileNetV2 + Transfer Learning · PlantVillage + PlantDoc Dataset · 2026*
