@@ -16,6 +16,9 @@ import io
 import tensorflow as tf
 import keras
 
+# Hastalık bilgi sözlüğü ayrı bir dosyada tutuluyor (belirtiler, organik/kimyasal tedavi, önleme)
+from hastalik_bilgi import hastalik_bilgi
+
 # ---------------------------------------------------------------------------
 # App configuration
 # ---------------------------------------------------------------------------
@@ -32,33 +35,6 @@ MODEL_DIR = os.path.join(BASE_DIR, '..', 'bitki_projesi_model')
 _model_cache = {}
 
 AVAILABLE_MODELS = ['best_model', 'best_model_v2', 'best_model_v3', 'best_model_v4', 'best_model_v5', 'best_model_v6']
-
-# ---------------------------------------------------------------------------
-# Disease information (Turkish)
-# ---------------------------------------------------------------------------
-hastalik_bilgi = {
-    "healthy": ("Sağlıklı", "Bu yaprak sağlıklı görünüyor. Herhangi bir hastalık belirtisi tespit edilmedi.", "Bitkinin düzenli bakımına devam edin."),
-    "Early_blight": ("Erken Yanıklık", "Alternaria mantarının neden olduğu bir hastalık. Yapraklarda koyu kahverengi halkalar oluşur.", "Etkilenen yaprakları uzaklaştırın ve fungisit uygulayın."),
-    "Late_blight": ("Geç Yanıklık", "Phytophthora infestans hastalığı. Yapraklarda gri-kahverengi lekeler görülür.", "Etkilenen yaprakları hemen imha edin ve bakır bazlı fungisit kullanın."),
-    "Leaf_scorch": ("Yaprak Yanması", "Yaprak kenarlarından başlayan kahverengileşme. Su stresi veya mantar kaynaklıdır.", "Sulama düzenini iyileştirin ve etkilenen yaprakları temizleyin."),
-    "Black_rot": ("Kara Çürüklük", "Güneş yanığı ve mantar enfeksiyonlarından kaynaklanır. Yapraklarda siyah lekeler oluşur.", "Etkilenen kısımları budayın ve fungisit uygulayın."),
-    "Common_rust": ("Yaygın Pas", "Puccinia sorghi mantarı. Yapraklarda turuncu-kahverengi lekeler görülür.", "Pas dayanıklı çeşitler tercih edin ve fungisit uygulayın."),
-    "Bacterial_spot": ("Bakteriyel Leke", "Xanthomonas bakterisi. Küçük koyu lekeler ve sararma görülür.", "Bakır bazlı bakterisit kullanın ve hastalıklı bitkileri izole edin."),
-    "Septoria_leaf_spot": ("Septoria Yaprak Lekesi", "Küçük yuvarlak lekeler ve sarı çember oluşur.", "Alt yaprakları temizleyin ve fungisit uygulayın."),
-    "mosaic_virus": ("Mozaik Virüsü", "Yapraklarda sarı-yeşil mozaik desen. Virüs yaprak biti ile yayılır.", "Virüslü bitkileri imha edin ve böcek kontrolü yapın."),
-    "Powdery_mildew": ("Küllü Mildiyö", "Yaprak yüzeyinde beyaz pudra görünümlü mantar.", "Kükürt bazlı fungisit kullanın ve hava sirkülasyonunu artırın."),
-    "Apple_scab": ("Elma Karalekesi", "Venturia inaequalis mantarı. Yapraklarda koyu lekeler oluşur.", "Düşen yaprakları temizleyin ve koruyucu fungisit uygulayın."),
-    "Cedar_apple_rust": ("Sedir Elma Pası", "Gymnosporangium mantarı. Sarı-turuncu lekeler görülür.", "Sedir ağaçlarını uzaklaştırın ve fungisit uygulayın."),
-    "Cercospora": ("Cercospora Yaprak Lekesi", "Gri merkezli koyu kenarlıklı lekeler oluşur.", "Etkilenen yaprakları uzaklaştırın ve fungisit uygulayın."),
-    "Northern_Leaf_Blight": ("Kuzey Yaprak Yanıklığı", "Uzun eliptik grimsi lekeler oluşur.", "Dayanıklı çeşitler kullanın ve ekim rotasyonu yapın."),
-    "Esca": ("Esca Hastalığı", "Üzüm asmasında mantar kaynaklı damar hastalığı. Yapraklarda kaplan çizgisi deseni.", "Etkilenen dalları budayın ve yara yerlerini koruyun."),
-    "Leaf_blight": ("Yaprak Yanıklığı", "Mantarlar tarafından oluşturulan yaprak yanıklığı.", "Fungisit uygulayın ve etkilenen yaprakları temizleyin."),
-    "Haunglongbing": ("Huanglongbing", "Turunçgil yeşillenme hastalığı. Yapraklarda asimetrik sararma.", "Psyllid böceklerini kontrol edin ve enfekte ağaçları uzaklaştırın."),
-    "Leaf_Mold": ("Yaprak Küfü", "Yaprak altında sarımsı-yeşil küf oluşumu.", "Havalandırmayı artırın ve fungisit uygulayın."),
-    "Spider_mites": ("Kırmızı Örümcek", "Yapraklarda küçük sarı noktalar ve ince ağ örgüsü.", "Akarisit uygulayın ve nem seviyesini artırın."),
-    "Target_Spot": ("Hedef Leke", "Yapraklarda konsantrik halkalı lekeler oluşur.", "Fungisit uygulayın ve bitkiler arası mesafeyi artırın."),
-    "Yellow_Leaf_Curl_Virus": ("Sarı Yaprak Kıvırcıklık Virüsü", "Yapraklarda yukarı doğru kıvrılma ve sararma.", "Beyaz sinek kontrolü yapın ve dirençli çeşitler kullanın."),
-}
 
 bitki_isimleri = {
     "Apple": "Elma",
@@ -109,10 +85,23 @@ def _get_model(model_name: str):
     return model
 
 
+def _bos_bilgi(disease_tr):
+    """Sözlükte bulunamayan hastalıklar için boş bir bilgi yapısı döndürür."""
+    return {
+        "hastalik_tr": disease_tr,
+        "belirtiler": "",
+        "organik_tedavi": "",
+        "kimyasal_tedavi": "",
+        "onleme": "",
+    }
+
+
 def _translate_class_name(class_name_en: str):
     """
     Parse an English class name like 'Apple___Black_rot' and return
-    (plant_tr, plant_en, disease_tr, disease_en, is_healthy, description, recommendation).
+    (plant_tr, plant_en, disease_tr, disease_en, is_healthy, info).
+    'info' is a dict with keys: hastalik_tr, belirtiler, organik_tedavi,
+    kimyasal_tedavi, onleme.
     """
     parts = class_name_en.split('___')
     plant_en = parts[0] if len(parts) > 0 else class_name_en
@@ -132,22 +121,20 @@ def _translate_class_name(class_name_en: str):
                 info = hastalik_bilgi[key]
                 break
 
-    if info:
-        disease_tr, description, recommendation = info
-    else:
-        is_healthy_flag = 'healthy' in disease_en.lower()
-        disease_tr = 'Sağlıklı' if is_healthy_flag else disease_en
-        description = ''
-        recommendation = ''
-
     is_healthy = 'healthy' in disease_en.lower()
 
-    return plant_tr, plant_en, disease_tr, disease_en, is_healthy, description, recommendation
+    if info:
+        disease_tr = info["hastalik_tr"]
+    else:
+        disease_tr = 'Sağlıklı' if is_healthy else disease_en
+        info = _bos_bilgi(disease_tr)
+
+    return plant_tr, plant_en, disease_tr, disease_en, is_healthy, info
 
 
 def _translate_class_name_short(class_name_en: str) -> str:
     """Return a short Turkish translation of the class name: 'Bitki - Hastalık'."""
-    plant_tr, _, disease_tr, _, is_healthy, _, _ = _translate_class_name(class_name_en)
+    plant_tr, _, disease_tr, _, is_healthy, _ = _translate_class_name(class_name_en)
     if is_healthy:
         return f"{plant_tr} - Sağlıklı"
     return f"{plant_tr} - {disease_tr}"
@@ -169,7 +156,7 @@ def get_classes():
         classes = []
         for idx in sorted(class_names.keys()):
             cn = class_names[idx]
-            plant_tr, plant_en, disease_tr, disease_en, is_healthy, desc, rec = _translate_class_name(cn)
+            plant_tr, plant_en, disease_tr, disease_en, is_healthy, info = _translate_class_name(cn)
             classes.append({
                 'index': idx,
                 'class_name': cn,
@@ -246,7 +233,7 @@ def predict():
         # --- Best prediction details -----------------------------------------
         best_idx = top_indices[0]
         best_class = class_names[best_idx]
-        plant_tr, plant_en, disease_tr, disease_en, is_healthy, description, recommendation = _translate_class_name(best_class)
+        plant_tr, plant_en, disease_tr, disease_en, is_healthy, info = _translate_class_name(best_class)
 
         return jsonify({
             'plant': plant_tr,
@@ -255,8 +242,14 @@ def predict():
             'disease_en': disease_en,
             'is_healthy': is_healthy,
             'confidence': round(float(predictions[best_idx]) * 100, 2),
-            'description': description,
-            'recommendation': recommendation,
+            # Geriye dönük uyumluluk için eski alanlar (belirtiler = eski description gibi)
+            'description': info.get('belirtiler', ''),
+            'recommendation': info.get('organik_tedavi', ''),
+            # Yeni yapılandırılmış alanlar
+            'belirtiler': info.get('belirtiler', ''),
+            'organik_tedavi': info.get('organik_tedavi', ''),
+            'kimyasal_tedavi': info.get('kimyasal_tedavi', ''),
+            'onleme': info.get('onleme', ''),
             'top_predictions': top_predictions,
             'model_used': model_name,
         })

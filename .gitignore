@@ -45,3 +45,7 @@ desktop.ini
 *.pkl
 *.h5
 bitki_projesi_colab/Pattern_Proje_deneme2.ipynb
+
+bitki_projesi/backend/app_yedek.py
+bitki_projesi/backend/tedavi_kontrol.py
+model_dosyalari.zip
