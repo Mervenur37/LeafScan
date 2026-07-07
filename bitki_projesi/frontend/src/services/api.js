@@ -35,4 +35,13 @@ export const healthCheck = async () => {
   return response.data;
 };
 
+// Sohbet asistanına mesaj gönderir. diseaseContext opsiyoneldir (tespit edilen hastalık).
+export const sendChatMessage = async (message, diseaseContext = '') => {
+  const response = await api.post('/chat', {
+    message: message,
+    disease_context: diseaseContext,
+  });
+  return response.data;
+};
+
 export default api;

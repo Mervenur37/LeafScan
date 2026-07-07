@@ -5,6 +5,7 @@ import TopPredictions from './TopPredictions'
 import { useLanguage } from '../context/LanguageContext'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
+import ChatWidget from '../components/ChatWidget'
 
 function AnalysisResult({ result, loading, previewImage, previewBase64 }) {
   const { t, language } = useLanguage()
@@ -107,6 +108,9 @@ function AnalysisResult({ result, loading, previewImage, previewBase64 }) {
 
   // Aktif sekme mevcut değilse ilk sekmeye düş
   const aktifIcerik = sekmeler.find(s => s.id === aktifSekme) || sekmeler[0]
+  const diseaseContext = result && !result.is_healthy
+  ? `${result.plant} bitkisinde ${result.disease} hastalığı tespit edildi.`
+  : (result && result.is_healthy ? `${result.plant} bitkisi sağlıklı görünüyor.` : '')
 
   return (
     <AnimatePresence mode="wait">
@@ -190,6 +194,7 @@ function AnalysisResult({ result, loading, previewImage, previewBase64 }) {
               </motion.div>
             )}
           </motion.div>
+          <ChatWidget diseaseContext={diseaseContext} />
         </div>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>

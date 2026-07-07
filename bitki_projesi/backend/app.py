@@ -16,8 +16,32 @@ import io
 import tensorflow as tf
 import keras
 
+# Sohbet asistanı için Gemini
+import google.generativeai as genai
+
 # Hastalık bilgi sözlüğü ayrı bir dosyada tutuluyor (belirtiler, organik/kimyasal tedavi, önleme)
 from hastalik_bilgi import hastalik_bilgi
+
+# ---------------------------------------------------------------------------
+# Ortam değişkenleri ve Gemini yapılandırması
+# ---------------------------------------------------------------------------
+from config import GEMINI_API_KEY
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
+# Asistanın kişiliği ve sınırları (system prompt)
+CHAT_SYSTEM_PROMPT = """Sen LeafScan adlı bir bitki hastalığı tespit uygulamasının yardımcı asistanısın.
+Görevin, kullanıcılara bitki hastalıkları, tedavi yöntemleri, önleme ve bitki bakımı konularında
+Türkçe, anlaşılır ve pratik cevaplar vermek.
+
+Kurallar:
+- Sadece bitki, tarım, bahçecilik ve bitki hastalıkları konularında yardım et.
+- Konu dışı sorulara (kişisel, siyasi, alakasız) kibarca "Ben sadece bitki ve hastalıkları
+  konusunda yardımcı olabilirim" diyerek yönlendir.
+- Cevapların kısa, net ve uygulanabilir olsun.
+- Kesin tıbbi/kimyasal doz vermek yerine genel öneriler sun; ciddi durumlarda bir ziraat
+  uzmanına danışılmasını öner.
+"""
 
 # ---------------------------------------------------------------------------
 # App configuration
@@ -62,7 +86,6 @@ def _load_class_names():
     path = os.path.join(MODEL_DIR, 'class_names.json')
     with open(path, 'r', encoding='utf-8') as f:
         raw = json.load(f)
-    # raw is {"Apple___Apple_scab": 0, ...}, reverse to {0: "Apple___Apple_scab", ...}
     return {v: k for k, v in raw.items()}
 
 
@@ -76,7 +99,7 @@ def _get_model(model_name: str):
         return None
 
     model = keras.models.load_model(
-        model_path, 
+        model_path,
         compile=False,
         custom_objects={'Functional': keras.models.Model},
         safe_mode=False
@@ -100,8 +123,6 @@ def _translate_class_name(class_name_en: str):
     """
     Parse an English class name like 'Apple___Black_rot' and return
     (plant_tr, plant_en, disease_tr, disease_en, is_healthy, info).
-    'info' is a dict with keys: hastalik_tr, belirtiler, organik_tedavi,
-    kimyasal_tedavi, onleme.
     """
     parts = class_name_en.split('___')
     plant_en = parts[0] if len(parts) > 0 else class_name_en
@@ -109,13 +130,10 @@ def _translate_class_name(class_name_en: str):
 
     plant_tr = bitki_isimleri.get(plant_en, plant_en)
 
-    # Determine the disease key for the hastalik_bilgi lookup
     disease_key = disease_en.replace(' ', '_')
 
-    # Check both exact and case-insensitive lookups
     info = hastalik_bilgi.get(disease_key)
     if info is None:
-        # Try partial matching for compound keys
         for key in hastalik_bilgi:
             if key.lower() in disease_key.lower() or disease_key.lower() in key.lower():
                 info = hastalik_bilgi[key]
@@ -152,7 +170,7 @@ def health():
 @app.route('/api/classes', methods=['GET'])
 def get_classes():
     try:
-        class_names = _load_class_names()  # {index: class_name}
+        class_names = _load_class_names()
         classes = []
         for idx in sorted(class_names.keys()):
             cn = class_names[idx]
@@ -189,7 +207,6 @@ def get_models():
 @app.route('/api/predict', methods=['POST'])
 def predict():
     try:
-        # --- Validate file ---------------------------------------------------
         if 'image' not in request.files:
             return jsonify({'error': 'Görüntü dosyası gerekli (image alanı)'}), 400
 
@@ -197,7 +214,6 @@ def predict():
         if file.filename == '':
             return jsonify({'error': 'Dosya seçilmedi'}), 400
 
-        # --- Select model ----------------------------------------------------
         model_name = request.form.get('model', 'best_model_v4')
         if model_name not in AVAILABLE_MODELS:
             return jsonify({'error': f'Geçersiz model adı. Mevcut modeller: {AVAILABLE_MODELS}'}), 400
@@ -206,20 +222,16 @@ def predict():
         if model is None:
             return jsonify({'error': f'Model dosyası bulunamadı: {model_name}.keras'}), 404
 
-        # --- Load class names ------------------------------------------------
         class_names = _load_class_names()
 
-        # --- Preprocess image ------------------------------------------------
         image_bytes = file.read()
         image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
         image = image.resize((128, 128))
         img_array = np.array(image, dtype=np.float32) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
 
-        # --- Predict ---------------------------------------------------------
         predictions = model.predict(img_array, verbose=0)[0]
 
-        # --- Top-5 -----------------------------------------------------------
         top_indices = np.argsort(predictions)[::-1][:5]
         top_predictions = []
         for idx in top_indices:
@@ -230,7 +242,6 @@ def predict():
                 'confidence': round(float(predictions[idx]) * 100, 2),
             })
 
-        # --- Best prediction details -----------------------------------------
         best_idx = top_indices[0]
         best_class = class_names[best_idx]
         plant_tr, plant_en, disease_tr, disease_en, is_healthy, info = _translate_class_name(best_class)
@@ -242,10 +253,8 @@ def predict():
             'disease_en': disease_en,
             'is_healthy': is_healthy,
             'confidence': round(float(predictions[best_idx]) * 100, 2),
-            # Geriye dönük uyumluluk için eski alanlar (belirtiler = eski description gibi)
             'description': info.get('belirtiler', ''),
             'recommendation': info.get('organik_tedavi', ''),
-            # Yeni yapılandırılmış alanlar
             'belirtiler': info.get('belirtiler', ''),
             'organik_tedavi': info.get('organik_tedavi', ''),
             'kimyasal_tedavi': info.get('kimyasal_tedavi', ''),
@@ -256,6 +265,37 @@ def predict():
 
     except Exception as e:
         return jsonify({'error': f'Tahmin sırasında hata oluştu: {str(e)}'}), 500
+
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    try:
+        if not GEMINI_API_KEY:
+            return jsonify({'error': 'Sohbet servisi yapılandırılmamış (API anahtarı eksik).'}), 503
+
+        data = request.get_json()
+        if not data or 'message' not in data:
+            return jsonify({'error': 'Mesaj gerekli.'}), 400
+
+        user_message = data['message']
+        disease_context = data.get('disease_context', '')
+
+        if disease_context:
+            full_message = f"[Tespit edilen hastalık: {disease_context}]\n\nKullanıcı sorusu: {user_message}"
+        else:
+            full_message = user_message
+
+        model = genai.GenerativeModel(
+            model_name='gemini-2.5-flash',
+            system_instruction=CHAT_SYSTEM_PROMPT
+        )
+
+        response = model.generate_content(full_message)
+
+        return jsonify({'reply': response.text})
+
+    except Exception as e:
+        return jsonify({'error': f'Sohbet sırasında hata oluştu: {str(e)}'}), 500
 
 
 @app.route('/api/metrics', methods=['GET'])
