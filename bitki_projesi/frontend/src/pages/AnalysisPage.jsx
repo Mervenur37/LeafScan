@@ -68,6 +68,11 @@ function AnalysisPage() {
       setLoading(true)
       try {
         const data = await predictImage(file, 'best_model_v6')
+        if (data.is_leaf === false) {
+        setError(data.error || 'Bu bir yaprak fotoğrafı değil. Lütfen net bir yaprak fotoğrafı yükleyin.')
+        setResult(null)
+        return
+      }
         setResult(data)
 
         setHistory(prev => [{
